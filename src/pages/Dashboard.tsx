@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
-import { Plus, BookOpen, Trophy, Clock } from "lucide-react";
+import { Plus, BookOpen, Trophy, Clock, Menu } from "lucide-react";
+import BottomNavigation from "@/components/BottomNavigation";
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -56,7 +57,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -66,9 +67,14 @@ export default function Dashboard() {
               Welcome back, {user?.user_metadata?.full_name || user?.email}!
             </p>
           </div>
-          <Button onClick={handleLogout} variant="outline">
-            Logout
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm">
+              <Menu className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleLogout} variant="outline" size="sm">
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -120,7 +126,11 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" size="lg">
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={() => navigate("/upload")}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Upload Question
               </Button>
@@ -135,7 +145,12 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full" size="lg">
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                size="lg"
+                onClick={() => navigate("/library")}
+              >
                 <BookOpen className="mr-2 h-4 w-4" />
                 Browse Library
               </Button>
@@ -156,7 +171,10 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground mt-2">
                 Start uploading questions to see your study history here
               </p>
-              <Button className="mt-4">
+              <Button 
+                className="mt-4"
+                onClick={() => navigate("/upload")}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Upload Your First Question
               </Button>
@@ -164,6 +182,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </main>
+
+      <BottomNavigation />
     </div>
   );
 }
