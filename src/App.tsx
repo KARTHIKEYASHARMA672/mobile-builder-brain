@@ -12,6 +12,8 @@ import GeneratedContent from "./pages/GeneratedContent";
 import Library from "./pages/Library";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Quiz from "./pages/Quiz";
+import QuizResults from "./pages/QuizResults";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +34,8 @@ const App = () => (
           <Route path="/library" element={<Library />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/quiz/:id" element={<Quiz />} />
+          <Route path="/quiz-results/:id" element={<QuizResults />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -4,13 +4,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
-import { Plus, BookOpen, Trophy, Clock, Menu } from "lucide-react";
+import { Plus, BookOpen, Trophy, Clock, Menu, Brain, Camera, Target, Zap } from "lucide-react";
 import BottomNavigation from "@/components/BottomNavigation";
+import StudyTimer from "@/components/StudyTimer";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Mock data for demonstration
+  const [mockStats] = useState({
+    totalQuestions: 12,
+    studyTime: 45, // minutes
+    quizzesTaken: 8,
+    averageScore: 85,
+    studyStreak: 5
+  });
+
+  const [mockActivity] = useState([
+    { id: "1", title: "Quantum Physics Quiz", subject: "Physics", type: "quiz", score: 92, date: "2024-01-22" },
+    { id: "2", title: "Calculus Problems", subject: "Mathematics", type: "upload", date: "2024-01-21" },
+    { id: "3", title: "Chemistry Review", subject: "Chemistry", type: "study", date: "2024-01-20" }
+  ]);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -88,8 +106,8 @@ export default function Dashboard() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">Start studying to see your progress</p>
+              <div className="text-2xl font-bold">{mockStats.totalQuestions}</div>
+              <p className="text-xs text-muted-foreground">+3 from last week</p>
             </CardContent>
           </Card>
           
@@ -99,88 +117,90 @@ export default function Dashboard() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0 min</div>
-              <p className="text-xs text-muted-foreground">Time spent learning</p>
+              <div className="text-2xl font-bold">{mockStats.studyTime} min</div>
+              <p className="text-xs text-muted-foreground">This week</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Quiz Score</CardTitle>
+              <CardTitle className="text-sm font-medium">Average Score</CardTitle>
               <Trophy className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">--</div>
-              <p className="text-xs text-muted-foreground">Average quiz performance</p>
+              <div className="text-2xl font-bold">{mockStats.averageScore}%</div>
+              <p className="text-xs text-muted-foreground">Quiz performance</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Recent Activity, Quick Actions & Study Timer */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Recent Activity */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Upload</CardTitle>
-              <CardDescription>
-                Upload a question to get instant AI-powered explanations
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Recent Activity
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Button 
-                className="w-full" 
-                size="lg"
-                onClick={() => navigate("/upload")}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Upload Question
-              </Button>
+              <div className="space-y-3">
+                {mockActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <Brain className="h-4 w-4 text-primary" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">{activity.title}</p>
+                      <p className="text-xs text-muted-foreground">{activity.subject} • {activity.date}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {activity.score ? `${activity.score}%` : activity.type}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Study Library</CardTitle>
-              <CardDescription>
-                Access your saved questions and generated content
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                size="lg"
-                onClick={() => navigate("/library")}
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                Browse Library
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Your latest study sessions and progress</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No activity yet</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Start uploading questions to see your study history here
-              </p>
-              <Button 
-                className="mt-4"
-                onClick={() => navigate("/upload")}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Upload Your First Question
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Link to="/upload">
+                  <Button className="w-full justify-start" variant="outline">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Upload Question
+                  </Button>
+                </Link>
+                <Link to="/quiz/1">
+                  <Button className="w-full justify-start" variant="outline">
+                    <Brain className="h-4 w-4 mr-2" />
+                    Take Quiz
+                  </Button>
+                </Link>
+                <Link to="/library">
+                  <Button className="w-full justify-start" variant="outline">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Browse Library
+                  </Button>
+                </Link>
+                <Button className="w-full justify-start" variant="outline">
+                  <Target className="h-4 w-4 mr-2" />
+                  Study Goals
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Study Timer */}
+          <StudyTimer className="lg:col-span-1" />
+        </div>
       </main>
 
       <BottomNavigation />
