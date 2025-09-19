@@ -9,6 +9,9 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import GeneratedContent from "./pages/GeneratedContent";
+import Library from "./pages/Library";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +29,9 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/content/:id" element={<GeneratedContent />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
