@@ -1,19 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { User } from "@supabase/supabase-js";
 import { Plus, BookOpen, Trophy, Clock, Menu, Brain, Camera, Target, Zap } from "lucide-react";
 import BottomNavigation from "@/components/BottomNavigation";
 import StudyTimer from "@/components/StudyTimer";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { profile } = useProfile();
 
   // Mock data for demonstration
   const [mockStats] = useState({
@@ -30,49 +28,7 @@ export default function Dashboard() {
     { id: "3", title: "Chemistry Review", subject: "Chemistry", type: "study", date: "2024-01-20" }
   ]);
 
-  useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-      
-      setUser(session.user);
-      setLoading(false);
-    };
-
-    checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        navigate("/auth");
-      } else if (session) {
-        setUser(session.user);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground mt-2">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -82,14 +38,14 @@ export default function Dashboard() {
           <div>
             <h1 className="text-2xl font-bold text-primary">AI Study Buddy</h1>
             <p className="text-sm text-muted-foreground">
-              Welcome back, {user?.user_metadata?.full_name || user?.email}!
+              Welcome back, {displayName}!
             </p>
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="sm">
               <Menu className="h-4 w-4" />
             </Button>
-            <Button onClick={handleLogout} variant="outline" size="sm">
+            <Button onClick={signOut} variant="outline" size="sm">
               Logout
             </Button>
           </div>

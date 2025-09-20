@@ -1,70 +1,94 @@
-import { useState } from "react";
-import { User, Settings, Trophy, Clock, BookOpen, Brain, Target, Download, LogOut, Shield } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { User as UserIcon, Mail, Calendar, Trophy, Target, BookOpen, Brain, Settings, Download, LogOut } from "lucide-react";
 import BottomNavigation from "@/components/BottomNavigation";
-import { Link } from "react-router-dom";
-
-// Mock user data
-const mockUser = {
-  id: "1",
-  name: "Alex Johnson",
-  email: "alex.johnson@example.com",
-  avatarUrl: "/placeholder.svg",
-  joinedDate: "2024-01-01",
-  profileCompletion: 85
-};
-
-// Mock statistics
-const mockStats = {
-  totalQuestions: 42,
-  studyTime: 156, // hours
-  quizzesTaken: 28,
-  averageScore: 87,
-  studyStreak: 12,
-  subjectsStudied: 6
-};
-
-// Mock achievements
-const mockAchievements = [
-  { id: "1", name: "First Steps", description: "Upload your first question", earned: true, earnedDate: "2024-01-02" },
-  { id: "2", name: "Quiz Master", description: "Take 10 quizzes", earned: true, earnedDate: "2024-01-10" },
-  { id: "3", name: "Study Streak", description: "Study for 7 days in a row", earned: true, earnedDate: "2024-01-15" },
-  { id: "4", name: "Subject Expert", description: "Master 5 different subjects", earned: false, progress: 60 },
-  { id: "5", name: "Time Scholar", description: "Study for 100 hours total", earned: true, earnedDate: "2024-01-20" },
-  { id: "6", name: "Perfect Score", description: "Get 100% on a quiz", earned: false, progress: 87 }
-];
-
-// Mock recent activity
-const mockActivity = [
-  { id: "1", type: "quiz", subject: "Physics", score: 92, date: "2024-01-22" },
-  { id: "2", type: "upload", subject: "Mathematics", date: "2024-01-21" },
-  { id: "3", type: "quiz", subject: "Chemistry", score: 88, date: "2024-01-20" },
-  { id: "4", type: "study", subject: "History", duration: 45, date: "2024-01-19" }
-];
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function Profile() {
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [editedName, setEditedName] = useState(mockUser.name);
-  const [editedEmail, setEditedEmail] = useState(mockUser.email);
+  const { user, signOut } = useAuth();
+  const { profile, updateProfile, loading } = useProfile();
+  const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    full_name: '',
+    bio: ''
+  });
+
+  // Mock data for demonstration
+  const [mockStats] = useState({
+    totalQuestions: 47,
+    totalQuizzes: 23,
+    averageScore: 89,
+    studyStreak: 12,
+    studyTime: 324, // minutes
+    completedCourses: 3
+  });
+
+  const [mockAchievements] = useState([
+    { id: "1", name: "First Quiz Master", description: "Complete your first quiz", earned: true, date: "2024-01-15" },
+    { id: "2", name: "Study Streak", description: "Study for 7 days in a row", earned: true, date: "2024-01-20" },
+    { id: "3", name: "Perfect Score", description: "Get 100% on a quiz", earned: true, date: "2024-01-18" },
+    { id: "4", name: "Night Owl", description: "Study after 10 PM", earned: false, date: null },
+    { id: "5", name: "Speed Learner", description: "Complete 10 quizzes in one day", earned: false, date: null },
+    { id: "6", name: "Knowledge Seeker", description: "Upload 50 questions", earned: false, date: null }
+  ]);
+
+  const [mockActivity] = useState([
+    { id: "1", type: "quiz", subject: "Physics", score: 92, date: "2024-01-22" },
+    { id: "2", type: "upload", subject: "Mathematics", date: "2024-01-21" },
+    { id: "3", type: "quiz", subject: "Chemistry", score: 88, date: "2024-01-20" },
+    { id: "4", type: "study", subject: "History", duration: 45, date: "2024-01-19" }
+  ]);
+
+  // Update form data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        bio: profile.bio || ''
+      });
+    }
+  }, [profile]);
+
+  const handleSaveProfile = async () => {
+    await updateProfile(formData);
+    setIsEditing(false);
+  };
+
+  const handleExportData = () => {
+    toast({
+      title: "Data Export",
+      description: "Your data export will be ready shortly and sent to your email.",
+    });
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed Out",
+      description: "You have been successfully signed out.",
+    });
+  };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
       case "quiz":
-        return <Brain className="h-4 w-4 text-green-600" />;
+        return <Brain className="h-4 w-4 text-accent" />;
       case "upload":
-        return <BookOpen className="h-4 w-4 text-blue-600" />;
+        return <BookOpen className="h-4 w-4 text-primary" />;
       case "study":
-        return <Clock className="h-4 w-4 text-purple-600" />;
+        return <Target className="h-4 w-4 text-secondary" />;
       default:
-        return <Target className="h-4 w-4 text-gray-600" />;
+        return <UserIcon className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -81,218 +105,224 @@ export default function Profile() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground mt-2">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Profile</h1>
-          <Link to="/settings">
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-          </Link>
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-primary">Your Profile</h1>
+          <Button variant="outline" size="sm" onClick={() => window.history.back()}>
+            Back
+          </Button>
         </div>
+      </header>
 
-        {/* User Info Card */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Profile Header Card */}
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={mockUser.avatarUrl} alt={mockUser.name} />
-                <AvatarFallback className="text-lg">
-                  {mockUser.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              
+            <div className="flex items-center space-x-4">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <UserIcon className="h-10 w-10 text-primary" />
+              </div>
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <div>
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={formData.full_name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea
+                        id="bio"
+                        placeholder="Tell us about yourself..."
+                        value={formData.bio}
+                        onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground">{mockUser.name}</h2>
-                    <p className="text-muted-foreground">{mockUser.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Joined {new Date(mockUser.joinedDate).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long' 
-                      })}
+                    <h3 className="text-xl font-semibold">{profile?.full_name || user?.user_metadata?.full_name || "Student"}</h3>
+                    <p className="text-sm text-muted-foreground flex items-center mt-1">
+                      <Mail className="h-4 w-4 mr-2" />
+                      {user?.email}
+                    </p>
+                    <p className="text-sm text-muted-foreground flex items-center mt-1">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Joined {new Date(user?.created_at || "").toLocaleDateString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {profile?.bio || "No bio added yet."}
                     </p>
                   </div>
-                  
-                  <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <User className="h-4 w-4 mr-2" />
-                        Edit Profile
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Edit Profile</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="name">Full Name</Label>
-                          <Input
-                            id="name"
-                            value={editedName}
-                            onChange={(e) => setEditedName(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="email">Email</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={editedEmail}
-                            onChange={(e) => setEditedEmail(e.target.value)}
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={() => setIsEditProfileOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button onClick={() => setIsEditProfileOpen(false)}>
-                            Save Changes
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Profile Completion</span>
-                    <span className="text-sm font-medium">{mockUser.profileCompletion}%</span>
-                  </div>
-                  <Progress value={mockUser.profileCompletion} className="h-2" />
-                </div>
+                )}
+              </div>
+              <div className="flex flex-col space-y-2">
+                {isEditing ? (
+                  <>
+                    <Button onClick={handleSaveProfile} size="sm" disabled={loading}>
+                      {loading ? "Saving..." : "Save Changes"}
+                    </Button>
+                    <Button onClick={() => setIsEditing(false)} variant="outline" size="sm">
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Grid */}
+        {/* Statistics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
               <BookOpen className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-foreground">{mockStats.totalQuestions}</p>
+              <p className="text-2xl font-bold">{mockStats.totalQuestions}</p>
               <p className="text-sm text-muted-foreground">Questions</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-4 text-center">
-              <Clock className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-foreground">{mockStats.studyTime}h</p>
-              <p className="text-sm text-muted-foreground">Study Time</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
               <Brain className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-foreground">{mockStats.quizzesTaken}</p>
-              <p className="text-sm text-muted-foreground">Quizzes</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Target className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-foreground">{mockStats.averageScore}%</p>
-              <p className="text-sm text-muted-foreground">Avg Score</p>
+              <p className="text-2xl font-bold">{mockStats.totalQuizzes}</p>
+              <p className="text-sm text-muted-foreground">Quizzes Taken</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-4 text-center">
               <Trophy className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-foreground">{mockStats.studyStreak}</p>
+              <p className="text-2xl font-bold">{mockStats.averageScore}%</p>
+              <p className="text-sm text-muted-foreground">Avg Score</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Target className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{mockStats.studyStreak}</p>
               <p className="text-sm text-muted-foreground">Day Streak</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-4 text-center">
-              <Shield className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-foreground">{mockStats.subjectsStudied}</p>
-              <p className="text-sm text-muted-foreground">Subjects</p>
+              <UserIcon className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{Math.floor(mockStats.studyTime / 60)}h</p>
+              <p className="text-sm text-muted-foreground">Study Time</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <BookOpen className="h-8 w-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{mockStats.completedCourses}</p>
+              <p className="text-sm text-muted-foreground">Completed</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabs for Achievements and Activity */}
+        {/* Achievements and Activity Tabs */}
         <Tabs defaultValue="achievements" className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
             <TabsTrigger value="activity">Recent Activity</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="achievements" className="space-y-4">
-            <div className="grid gap-4">
-              {mockAchievements.map((achievement) => (
-                <Card key={achievement.id} className={achievement.earned ? "bg-primary/5 border-primary/20" : ""}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-full ${achievement.earned ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <TabsContent value="achievements">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5" />
+                  Your Achievements
+                </CardTitle>
+                <CardDescription>
+                  Track your learning milestones and unlock new badges
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {mockAchievements.map((achievement) => (
+                    <div key={achievement.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        achievement.earned ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}>
                         <Trophy className="h-6 w-6" />
                       </div>
-                      
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-foreground">{achievement.name}</h3>
+                          <p className="font-medium">{achievement.name}</p>
                           {achievement.earned && (
-                            <Badge variant="secondary" className="bg-primary text-primary-foreground">
-                              Earned
-                            </Badge>
+                            <Badge variant="secondary">Earned</Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">{achievement.description}</p>
-                        
-                        {achievement.earned ? (
-                          <p className="text-xs text-muted-foreground">
-                            Earned on {new Date(achievement.earnedDate!).toLocaleDateString()}
+                        <p className="text-sm text-muted-foreground">{achievement.description}</p>
+                        {achievement.earned && achievement.date && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Earned on {new Date(achievement.date).toLocaleDateString()}
                           </p>
-                        ) : (
-                          <div className="space-y-1">
-                            <div className="flex items-center justified-between">
-                              <span className="text-xs text-muted-foreground">Progress</span>
-                              <span className="text-xs text-muted-foreground">{achievement.progress}%</span>
-                            </div>
-                            <Progress value={achievement.progress} className="h-1" />
-                          </div>
                         )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          <TabsContent value="activity" className="space-y-4">
-            <div className="space-y-3">
-              {mockActivity.map((activity) => (
-                <Card key={activity.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
+          <TabsContent value="activity">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>
+                  Your latest study sessions and progress
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {mockActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                       {getActivityIcon(activity.type)}
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">
-                          {getActivityDescription(activity)}
-                        </p>
+                        <p className="text-sm font-medium">{getActivityDescription(activity)}</p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(activity.date).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -300,20 +330,23 @@ export default function Profile() {
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Account Actions</CardTitle>
+            <CardDescription>
+              Manage your account data and preferences
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start">
+            <Button onClick={handleExportData} variant="outline" className="w-full justify-start">
               <Download className="h-4 w-4 mr-2" />
               Export My Data
             </Button>
-            <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
+            <Button onClick={handleSignOut} variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
             </Button>
           </CardContent>
         </Card>
-      </div>
-      
+      </main>
+
       <BottomNavigation />
     </div>
   );
