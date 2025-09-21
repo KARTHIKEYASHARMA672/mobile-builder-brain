@@ -8,33 +8,39 @@ export function useStorage() {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
 
-  const uploadQuestionImage = async (file: File): Promise<string | null> => {
-    if (!user || !file) return null;
+  const uploadFile = async (
+    file: File,
+    bucket: 'question-images' | 'avatars',
+    folder?: string
+  ) => {
+    if (!user) return null;
 
     try {
       setUploading(true);
-      
-      // Create a unique filename
+
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/${folder || 'uploads'}/${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('question-images')
-        .upload(fileName, file);
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (uploadError) throw uploadError;
+      if (error) throw error;
 
-      // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('question-images')
-        .getPublicUrl(fileName);
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
 
       toast({
         title: "Success",
-        description: "Image uploaded successfully",
+        description: "File uploaded successfully",
       });
 
-      return publicUrl;
+      return urlData.publicUrl;
     } catch (error: any) {
       toast({
         title: "Error",
@@ -47,55 +53,16 @@ export function useStorage() {
     }
   };
 
-  const uploadAvatar = async (file: File): Promise<string | null> => {
-    if (!user || !file) return null;
+  const deleteFile = async (
+    bucket: 'question-images' | 'avatars',
+    path: string
+  ) => {
+    if (!user) return false;
 
-    try {
-      setUploading(true);
-      
-      // Create a unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
-
-      // Remove old avatar if it exists
-      await supabase.storage
-        .from('avatars')
-        .remove([fileName]);
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      toast({
-        title: "Success",
-        description: "Avatar uploaded successfully",
-      });
-
-      return publicUrl;
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const deleteFile = async (bucket: string, filePath: string) => {
     try {
       const { error } = await supabase.storage
         .from(bucket)
-        .remove([filePath]);
+        .remove([path]);
 
       if (error) throw error;
 
@@ -103,19 +70,30 @@ export function useStorage() {
         title: "Success",
         description: "File deleted successfully",
       });
+
+      return true;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+      return false;
     }
+  };
+
+  const getFileUrl = (bucket: 'question-images' | 'avatars', path: string) => {
+    const { data } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path);
+
+    return data.publicUrl;
   };
 
   return {
     uploading,
-    uploadQuestionImage,
-    uploadAvatar,
+    uploadFile,
     deleteFile,
+    getFileUrl,
   };
 }

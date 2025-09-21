@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export interface Quiz {
+interface Quiz {
   id: string;
   question_id: string;
   user_id: string;
@@ -11,7 +11,7 @@ export interface Quiz {
   created_at: string;
 }
 
-export interface QuizQuestion {
+interface QuizQuestion {
   id: string;
   quiz_id: string;
   question_text: string;
@@ -24,7 +24,7 @@ export interface QuizQuestion {
   order_index: number | null;
 }
 
-export interface QuizAttempt {
+interface QuizAttempt {
   id: string;
   quiz_id: string;
   user_id: string;
@@ -32,6 +32,23 @@ export interface QuizAttempt {
   total_questions: number;
   time_taken: number | null;
   completed_at: string;
+}
+
+interface NewQuiz {
+  question_id: string;
+  title: string;
+}
+
+interface NewQuizQuestion {
+  quiz_id: string;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: 'A' | 'B' | 'C' | 'D';
+  explanation?: string;
+  order_index?: number;
 }
 
 export function useQuizzes() {
@@ -69,25 +86,20 @@ export function useQuizzes() {
     }
   };
 
-  const createQuiz = async (quizData: {
-    question_id: string;
-    title: string;
-  }) => {
+  const createQuiz = async (quizData: NewQuiz) => {
     if (!user) return null;
 
     try {
       const { data, error } = await supabase
         .from('quizzes')
-        .insert({
-          user_id: user.id,
-          ...quizData,
-        })
+        .insert([{ ...quizData, user_id: user.id }])
         .select()
         .single();
 
       if (error) throw error;
 
-      await fetchQuizzes();
+      setQuizzes(prev => [data, ...prev]);
+      
       toast({
         title: "Success",
         description: "Quiz created successfully",
@@ -104,7 +116,9 @@ export function useQuizzes() {
     }
   };
 
-  const getQuizQuestions = async (quizId: string): Promise<QuizQuestion[]> => {
+  const getQuizQuestions = async (quizId: string) => {
+    if (!user) return [];
+
     try {
       const { data, error } = await supabase
         .from('quiz_questions')
@@ -113,7 +127,7 @@ export function useQuizzes() {
         .order('order_index', { ascending: true });
 
       if (error) throw error;
-      return (data || []) as QuizQuestion[];
+      return data || [];
     } catch (error: any) {
       toast({
         title: "Error",
@@ -124,26 +138,29 @@ export function useQuizzes() {
     }
   };
 
-  const createQuizQuestions = async (questions: Omit<QuizQuestion, 'id'>[]) => {
+  const createQuizQuestion = async (questionData: NewQuizQuestion) => {
+    if (!user) return null;
+
     try {
       const { data, error } = await supabase
         .from('quiz_questions')
-        .insert(questions)
-        .select();
+        .insert([questionData])
+        .select()
+        .single();
 
       if (error) throw error;
       return data;
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to create quiz questions",
+        description: error.message,
         variant: "destructive",
       });
       return null;
     }
   };
 
-  const submitQuizAttempt = async (attemptData: {
+  const createQuizAttempt = async (attemptData: {
     quiz_id: string;
     score: number;
     total_questions: number;
@@ -154,10 +171,7 @@ export function useQuizzes() {
     try {
       const { data, error } = await supabase
         .from('quiz_attempts')
-        .insert({
-          user_id: user.id,
-          ...attemptData,
-        })
+        .insert([{ ...attemptData, user_id: user.id }])
         .select()
         .single();
 
@@ -179,20 +193,16 @@ export function useQuizzes() {
     }
   };
 
-  const getQuizAttempts = async (quizId?: string): Promise<QuizAttempt[]> => {
+  const getQuizAttempts = async (quizId: string) => {
     if (!user) return [];
 
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('quiz_attempts')
         .select('*')
-        .eq('user_id', user.id);
-
-      if (quizId) {
-        query = query.eq('quiz_id', quizId);
-      }
-
-      const { data, error } = await query.order('completed_at', { ascending: false });
+        .eq('quiz_id', quizId)
+        .eq('user_id', user.id)
+        .order('completed_at', { ascending: false });
 
       if (error) throw error;
       return data || [];
@@ -206,38 +216,14 @@ export function useQuizzes() {
     }
   };
 
-  const deleteQuiz = async (quizId: string) => {
-    try {
-      const { error } = await supabase
-        .from('quizzes')
-        .delete()
-        .eq('id', quizId);
-
-      if (error) throw error;
-
-      await fetchQuizzes();
-      toast({
-        title: "Success",
-        description: "Quiz deleted successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   return {
     quizzes,
     loading,
     createQuiz,
     getQuizQuestions,
-    createQuizQuestions,
-    submitQuizAttempt,
+    createQuizQuestion,
+    createQuizAttempt,
     getQuizAttempts,
-    deleteQuiz,
     refetch: fetchQuizzes,
   };
 }

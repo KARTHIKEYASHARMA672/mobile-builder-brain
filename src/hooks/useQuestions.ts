@@ -3,13 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export interface Question {
+interface Question {
   id: string;
   user_id: string;
   original_text: string;
   image_url: string | null;
   subject: string | null;
   created_at: string;
+}
+
+interface NewQuestion {
+  original_text: string;
+  image_url?: string;
+  subject?: string;
 }
 
 export function useQuestions() {
@@ -47,26 +53,20 @@ export function useQuestions() {
     }
   };
 
-  const createQuestion = async (questionData: {
-    original_text: string;
-    image_url?: string;
-    subject?: string;
-  }) => {
+  const createQuestion = async (questionData: NewQuestion) => {
     if (!user) return null;
 
     try {
       const { data, error } = await supabase
         .from('questions')
-        .insert({
-          user_id: user.id,
-          ...questionData,
-        })
+        .insert([{ ...questionData, user_id: user.id }])
         .select()
         .single();
 
       if (error) throw error;
 
-      await fetchQuestions();
+      setQuestions(prev => [data, ...prev]);
+      
       toast({
         title: "Success",
         description: "Question created successfully",
@@ -83,37 +83,76 @@ export function useQuestions() {
     }
   };
 
-  const deleteQuestion = async (questionId: string) => {
+  const updateQuestion = async (id: string, updates: Partial<NewQuestion>) => {
+    if (!user) return false;
+
     try {
       const { error } = await supabase
         .from('questions')
-        .delete()
-        .eq('id', questionId);
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
-      await fetchQuestions();
+      setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
+      
       toast({
         title: "Success",
-        description: "Question deleted successfully",
+        description: "Question updated successfully",
       });
+
+      return true;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+      return false;
+    }
+  };
+
+  const deleteQuestion = async (id: string) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setQuestions(prev => prev.filter(q => q.id !== id));
+      
+      toast({
+        title: "Success",
+        description: "Question deleted successfully",
+      });
+
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
   const searchQuestions = async (searchTerm: string) => {
-    if (!user) return [];
+    if (!user || !searchTerm.trim()) {
+      return questions;
+    }
 
     try {
       const { data, error } = await supabase
         .rpc('search_questions', {
           search_term: searchTerm,
-          user_uuid: user.id,
+          user_uuid: user.id
         });
 
       if (error) throw error;
@@ -121,10 +160,10 @@ export function useQuestions() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to search questions",
+        description: "Search failed",
         variant: "destructive",
       });
-      return [];
+      return questions;
     }
   };
 
@@ -132,6 +171,7 @@ export function useQuestions() {
     questions,
     loading,
     createQuestion,
+    updateQuestion,
     deleteQuestion,
     searchQuestions,
     refetch: fetchQuestions,

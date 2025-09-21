@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export interface Favorite {
+interface Favorite {
   user_id: string;
   question_id: string;
   created_at: string;
@@ -12,7 +12,7 @@ export interface Favorite {
 export function useFavorites() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,11 +27,12 @@ export function useFavorites() {
     try {
       const { data, error } = await supabase
         .from('favorites')
-        .select('question_id')
-        .eq('user_id', user.id);
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setFavorites(data?.map(f => f.question_id) || []);
+      setFavorites(data || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -44,34 +45,39 @@ export function useFavorites() {
   };
 
   const addToFavorites = async (questionId: string) => {
-    if (!user) return;
+    if (!user) return false;
 
     try {
       const { error } = await supabase
         .from('favorites')
-        .insert({
-          user_id: user.id,
-          question_id: questionId,
-        });
+        .insert([{ user_id: user.id, question_id: questionId }]);
 
       if (error) throw error;
 
-      setFavorites(prev => [...prev, questionId]);
+      setFavorites(prev => [...prev, {
+        user_id: user.id,
+        question_id: questionId,
+        created_at: new Date().toISOString()
+      }]);
+
       toast({
         title: "Success",
         description: "Added to favorites",
       });
+
+      return true;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+      return false;
     }
   };
 
   const removeFromFavorites = async (questionId: string) => {
-    if (!user) return;
+    if (!user) return false;
 
     try {
       const { error } = await supabase
@@ -82,30 +88,26 @@ export function useFavorites() {
 
       if (error) throw error;
 
-      setFavorites(prev => prev.filter(id => id !== questionId));
+      setFavorites(prev => prev.filter(f => f.question_id !== questionId));
+
       toast({
         title: "Success",
         description: "Removed from favorites",
       });
+
+      return true;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+      return false;
     }
   };
 
   const isFavorite = (questionId: string) => {
-    return favorites.includes(questionId);
-  };
-
-  const toggleFavorite = async (questionId: string) => {
-    if (isFavorite(questionId)) {
-      await removeFromFavorites(questionId);
-    } else {
-      await addToFavorites(questionId);
-    }
+    return favorites.some(f => f.question_id === questionId);
   };
 
   return {
@@ -114,7 +116,6 @@ export function useFavorites() {
     addToFavorites,
     removeFromFavorites,
     isFavorite,
-    toggleFavorite,
     refetch: fetchFavorites,
   };
 }
