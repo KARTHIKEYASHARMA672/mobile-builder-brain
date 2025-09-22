@@ -1,0 +1,300 @@
+import jsPDF from 'jspdf';
+
+export interface ExportContent {
+  question: string;
+  subject?: string;
+  content: {
+    type: string;
+    text: string;
+  }[];
+  createdAt?: string;
+}
+
+export interface QuizExportData {
+  title: string;
+  questions: Array<{
+    question: string;
+    options: { A: string; B: string; C: string; D: string };
+    correctAnswer: string;
+    explanation?: string;
+  }>;
+  subject?: string;
+  createdAt?: string;
+}
+
+export class PDFExporter {
+  private doc: jsPDF;
+  private pageWidth: number;
+  private pageHeight: number;
+  private margin: number;
+  private currentY: number;
+
+  constructor() {
+    this.doc = new jsPDF();
+    this.pageWidth = this.doc.internal.pageSize.width;
+    this.pageHeight = this.doc.internal.pageSize.height;
+    this.margin = 20;
+    this.currentY = this.margin;
+  }
+
+  private checkPageBreak(height: number): void {
+    if (this.currentY + height > this.pageHeight - this.margin) {
+      this.doc.addPage();
+      this.currentY = this.margin;
+    }
+  }
+
+  private addTitle(title: string): void {
+    this.doc.setFontSize(20);
+    this.doc.setFont(undefined, 'bold');
+    
+    const textWidth = this.doc.getTextWidth(title);
+    const x = (this.pageWidth - textWidth) / 2;
+    
+    this.checkPageBreak(25);
+    this.doc.text(title, x, this.currentY);
+    this.currentY += 25;
+  }
+
+  private addSubtitle(subtitle: string): void {
+    this.doc.setFontSize(14);
+    this.doc.setFont(undefined, 'normal');
+    this.doc.setTextColor(100, 100, 100);
+    
+    const textWidth = this.doc.getTextWidth(subtitle);
+    const x = (this.pageWidth - textWidth) / 2;
+    
+    this.checkPageBreak(15);
+    this.doc.text(subtitle, x, this.currentY);
+    this.currentY += 20;
+    
+    // Reset color
+    this.doc.setTextColor(0, 0, 0);
+  }
+
+  private addSection(title: string, content: string): void {
+    // Section title
+    this.doc.setFontSize(16);
+    this.doc.setFont(undefined, 'bold');
+    this.doc.setTextColor(37, 99, 235); // Blue color
+    
+    this.checkPageBreak(20);
+    this.doc.text(title, this.margin, this.currentY);
+    this.currentY += 15;
+    
+    // Section content
+    this.doc.setFontSize(11);
+    this.doc.setFont(undefined, 'normal');
+    this.doc.setTextColor(0, 0, 0);
+    
+    const textWidth = this.pageWidth - (this.margin * 2);
+    const lines = this.doc.splitTextToSize(content, textWidth);
+    
+    for (const line of lines) {
+      this.checkPageBreak(12);
+      this.doc.text(line, this.margin, this.currentY);
+      this.currentY += 7;
+    }
+    
+    this.currentY += 10; // Add space after section
+  }
+
+  private addQuestion(questionNum: number, question: string, options: any, correctAnswer: string, explanation?: string): void {
+    // Question number and text
+    this.doc.setFontSize(12);
+    this.doc.setFont(undefined, 'bold');
+    
+    const questionTitle = `${questionNum}. ${question}`;
+    const textWidth = this.pageWidth - (this.margin * 2);
+    const questionLines = this.doc.splitTextToSize(questionTitle, textWidth);
+    
+    this.checkPageBreak(questionLines.length * 7 + 40);
+    
+    for (const line of questionLines) {
+      this.doc.text(line, this.margin, this.currentY);
+      this.currentY += 7;
+    }
+    
+    this.currentY += 5;
+    
+    // Options
+    this.doc.setFont(undefined, 'normal');
+    const optionLabels = ['A', 'B', 'C', 'D'];
+    
+    optionLabels.forEach(label => {
+      const isCorrect = label === correctAnswer;
+      const optionText = `${label}. ${options[label]}`;
+      
+      if (isCorrect) {
+        this.doc.setTextColor(16, 185, 129); // Green for correct answer
+        this.doc.setFont(undefined, 'bold');
+      } else {
+        this.doc.setTextColor(0, 0, 0);
+        this.doc.setFont(undefined, 'normal');
+      }
+      
+      const optionLines = this.doc.splitTextToSize(optionText, textWidth - 10);
+      for (const line of optionLines) {
+        this.doc.text(line, this.margin + 10, this.currentY);
+        this.currentY += 6;
+      }
+    });
+    
+    // Explanation
+    if (explanation) {
+      this.currentY += 5;
+      this.doc.setTextColor(75, 85, 99);
+      this.doc.setFont(undefined, 'italic');
+      
+      const explanationText = `Explanation: ${explanation}`;
+      const explanationLines = this.doc.splitTextToSize(explanationText, textWidth - 10);
+      
+      for (const line of explanationLines) {
+        this.checkPageBreak(6);
+        this.doc.text(line, this.margin + 10, this.currentY);
+        this.currentY += 6;
+      }
+    }
+    
+    this.currentY += 15; // Space between questions
+    this.doc.setTextColor(0, 0, 0);
+  }
+
+  private addFooter(): void {
+    const pageCount = this.doc.getNumberOfPages();
+    
+    for (let i = 1; i <= pageCount; i++) {
+      this.doc.setPage(i);
+      this.doc.setFontSize(8);
+      this.doc.setTextColor(150, 150, 150);
+      
+      const footerText = `Generated by AI Study Buddy - Page ${i} of ${pageCount}`;
+      const textWidth = this.doc.getTextWidth(footerText);
+      const x = (this.pageWidth - textWidth) / 2;
+      
+      this.doc.text(footerText, x, this.pageHeight - 10);
+    }
+  }
+
+  exportStudyMaterial(data: ExportContent): void {
+    // Add title
+    this.addTitle('Study Material');
+    
+    // Add metadata
+    if (data.subject) {
+      this.addSubtitle(`Subject: ${data.subject}`);
+    }
+    
+    if (data.createdAt) {
+      const date = new Date(data.createdAt).toLocaleDateString();
+      this.addSubtitle(`Created: ${date}`);
+    }
+    
+    // Add question
+    this.addSection('Question', data.question);
+    
+    // Add content sections
+    data.content.forEach(item => {
+      const sectionTitle = this.formatContentTypeTitle(item.type);
+      this.addSection(sectionTitle, item.text);
+    });
+    
+    this.addFooter();
+    
+    // Generate filename
+    const filename = `study-material-${Date.now()}.pdf`;
+    this.doc.save(filename);
+  }
+
+  exportQuiz(data: QuizExportData): void {
+    // Add title
+    this.addTitle(data.title || 'Quiz');
+    
+    // Add metadata
+    if (data.subject) {
+      this.addSubtitle(`Subject: ${data.subject}`);
+    }
+    
+    if (data.createdAt) {
+      const date = new Date(data.createdAt).toLocaleDateString();
+      this.addSubtitle(`Created: ${date}`);
+    }
+    
+    this.addSubtitle(`Total Questions: ${data.questions.length}`);
+    
+    // Add questions
+    data.questions.forEach((question, index) => {
+      this.addQuestion(
+        index + 1,
+        question.question,
+        question.options,
+        question.correctAnswer,
+        question.explanation
+      );
+    });
+    
+    this.addFooter();
+    
+    // Generate filename
+    const filename = `quiz-${data.title?.toLowerCase().replace(/\s+/g, '-') || 'quiz'}-${Date.now()}.pdf`;
+    this.doc.save(filename);
+  }
+
+  private formatContentTypeTitle(type: string): string {
+    const titles = {
+      '2M': '2-Minute Explanation',
+      '5M': '5-Minute Explanation', 
+      '10M': '10-Minute Explanation',
+      'essay': 'Essay Response',
+      'notes': 'Study Notes'
+    };
+    
+    return titles[type as keyof typeof titles] || type;
+  }
+
+  // Bulk export multiple materials
+  static async exportBulkMaterials(materials: ExportContent[]): Promise<void> {
+    const doc = new jsPDF();
+    let isFirstPage = true;
+    
+    for (const material of materials) {
+      if (!isFirstPage) {
+        doc.addPage();
+      }
+      
+      const exporter = new PDFExporter();
+      // Copy the current document state
+      exporter.doc = doc;
+      exporter.currentY = isFirstPage ? 20 : 20;
+      
+      // Add a separator for multiple materials
+      if (!isFirstPage) {
+        doc.setFontSize(14);
+        doc.setTextColor(200, 200, 200);
+        doc.text('─'.repeat(50), 20, exporter.currentY);
+        exporter.currentY += 20;
+      }
+      
+      exporter.exportStudyMaterial(material);
+      isFirstPage = false;
+    }
+    
+    const filename = `bulk-study-materials-${Date.now()}.pdf`;
+    doc.save(filename);
+  }
+}
+
+// Utility functions
+export const exportToPDF = (data: ExportContent): void => {
+  const exporter = new PDFExporter();
+  exporter.exportStudyMaterial(data);
+};
+
+export const exportQuizToPDF = (data: QuizExportData): void => {
+  const exporter = new PDFExporter();
+  exporter.exportQuiz(data);
+};
+
+export const exportBulkToPDF = async (materials: ExportContent[]): Promise<void> => {
+  await PDFExporter.exportBulkMaterials(materials);
+};
