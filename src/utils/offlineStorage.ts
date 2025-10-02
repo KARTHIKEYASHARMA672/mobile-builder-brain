@@ -317,7 +317,7 @@ export const registerBackgroundSync = async (tag: string): Promise<void> => {
         await syncManager.register(tag);
       }
     } catch (error) {
-      console.error('Background sync registration failed:', error);
+      // Background sync not available
     }
   }
 };

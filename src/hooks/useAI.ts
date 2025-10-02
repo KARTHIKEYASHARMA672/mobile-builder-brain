@@ -27,7 +27,6 @@ export function useAI() {
   const generateContent = async (options: ContentGenerationOptions) => {
     try {
       setLoading(true);
-      console.log('Generating content with options:', options);
 
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: options
@@ -53,7 +52,6 @@ export function useAI() {
       };
 
     } catch (error: any) {
-      console.error('Content generation error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to generate content",
@@ -68,7 +66,6 @@ export function useAI() {
   const generateQuiz = async (options: QuizGenerationOptions) => {
     try {
       setLoading(true);
-      console.log('Generating quiz with options:', options);
 
       const { data, error } = await supabase.functions.invoke('generate-quiz', {
         body: options
@@ -94,7 +91,6 @@ export function useAI() {
       };
 
     } catch (error: any) {
-      console.error('Quiz generation error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to generate quiz",
@@ -109,7 +105,6 @@ export function useAI() {
   const extractTextFromImage = async (options: ImageToTextOptions) => {
     try {
       setLoading(true);
-      console.log('Extracting text from image');
 
       const { data, error } = await supabase.functions.invoke('image-to-text', {
         body: options
@@ -143,7 +138,6 @@ export function useAI() {
       };
 
     } catch (error: any) {
-      console.error('Image text extraction error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to extract text from image",

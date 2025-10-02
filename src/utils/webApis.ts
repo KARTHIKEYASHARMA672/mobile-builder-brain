@@ -9,7 +9,6 @@ export const shareContent = async (data: {
       await navigator.share(data);
       return true;
     } catch (error) {
-      console.error('Error sharing:', error);
       return false;
     }
   } else {
@@ -25,7 +24,6 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
       await navigator.clipboard.writeText(text);
       return true;
     } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
       return false;
     }
   } else {
@@ -43,7 +41,6 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
       document.body.removeChild(textArea);
       return successful;
     } catch (error) {
-      console.error('Fallback copy failed:', error);
       return false;
     }
   }
@@ -89,7 +86,6 @@ export const captureImage = async (options: {
       };
     });
   } catch (error) {
-    console.error('Camera access failed:', error);
     return null;
   }
 };
@@ -111,7 +107,6 @@ export const saveFile = async (data: string, filename: string, mimeType: string)
       await writable.close();
       return true;
     } catch (error) {
-      console.error('File save failed:', error);
       return false;
     }
   } else {
@@ -184,7 +179,6 @@ export const getBatteryInfo = async (): Promise<any> => {
         dischargingTime: battery.dischargingTime
       };
     } catch (error) {
-      console.error('Battery API not available:', error);
       return null;
     }
   }
@@ -206,7 +200,6 @@ export const requestWakeLock = async (): Promise<any> => {
       const wakeLock = await (navigator as any).wakeLock.request('screen');
       return wakeLock;
     } catch (error) {
-      console.error('Wake lock request failed:', error);
       return null;
     }
   }
