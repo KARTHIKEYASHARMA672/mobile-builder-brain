@@ -1,72 +1,97 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, BookOpen, Download, Share2, Trophy, Star } from "lucide-react";
+import { ArrowLeft, BookOpen, Download, Share2, Trophy, Star, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNavigation from "@/components/BottomNavigation";
-
-// Mock data - in real app this would come from API
-const mockContent = {
-  question: "What is photosynthesis and how does it work?",
-  subject: "biology",
-  formats: {
-    "2M": {
-      title: "Quick Overview (2 minutes)",
-      content: "Photosynthesis is the process by which plants convert sunlight, water, and carbon dioxide into glucose and oxygen. It occurs in two main stages: the light-dependent reactions in the thylakoids, where sunlight is captured and water is split to produce oxygen, and the light-independent reactions (Calvin cycle) in the stroma, where carbon dioxide is fixed into glucose using the energy from the first stage."
-    },
-    "5M": {
-      title: "Detailed Explanation (5 minutes)",
-      content: "Photosynthesis is a complex biochemical process that converts light energy into chemical energy. It takes place in chloroplasts, specifically in two locations: the thylakoids and the stroma.\n\n**Light-Dependent Reactions (Thylakoids):**\n- Chlorophyll absorbs photons of light\n- Water molecules are split (photolysis), releasing electrons, protons, and oxygen\n- Energy is used to pump protons across the thylakoid membrane\n- ATP and NADPH are produced\n\n**Light-Independent Reactions - Calvin Cycle (Stroma):**\n- CO₂ from the atmosphere is fixed by the enzyme RuBisCO\n- Using ATP and NADPH from the light reactions, CO₂ is reduced to form glucose\n- The cycle regenerates the starting molecule (RuBP) to continue the process\n\n**Overall Equation:** 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂"
-    },
-    "10M": {
-      title: "Comprehensive Study (10 minutes)",
-      content: "Photosynthesis is the fundamental process that sustains most life on Earth, converting solar energy into chemical energy stored in organic molecules.\n\n**Historical Context:**\nPhotosynthesis was first studied by Jan van Helmont in the 1600s, with major contributions from Joseph Priestley, Jan Ingenhousz, and others who gradually understood the role of light, air, and water.\n\n**Detailed Mechanism:**\n\n**1. Light-Dependent Reactions (Photo phase):**\n- Location: Thylakoid membranes of chloroplasts\n- Photosystem II (P680) captures light and splits water molecules\n- Electrons travel through electron transport chain\n- Photosystem I (P700) re-energizes electrons\n- Chemiosmosis produces ATP via ATP synthase\n- NADP⁺ is reduced to NADPH\n- Oxygen is released as a byproduct\n\n**2. Light-Independent Reactions (Calvin-Benson Cycle):**\n- Location: Stroma of chloroplasts\n- Carbon fixation: CO₂ combines with RuBP via RuBisCO enzyme\n- Reduction: 3-phosphoglycerate is reduced using ATP and NADPH\n- Regeneration: RuBP is regenerated to continue the cycle\n- Net product: Glucose (C₆H₁₂O₆)\n\n**Environmental Factors:**\n- Light intensity, wavelength, and duration\n- CO₂ concentration\n- Temperature\n- Water availability\n- Chlorophyll content\n\n**Ecological Importance:**\n- Primary source of oxygen in atmosphere\n- Base of most food chains\n- Carbon dioxide removal from atmosphere\n- Energy storage for ecosystems"
-    },
-    "essay": {
-      title: "Complete Essay",
-      content: "# Photosynthesis: The Foundation of Life on Earth\n\n## Introduction\n\nPhotosynthesis represents one of the most crucial biological processes on our planet, serving as the primary mechanism by which solar energy is converted into chemical energy and stored in organic compounds. This process, carried out by plants, algae, and certain bacteria, not only sustains these organisms but forms the foundation of virtually all food webs on Earth. Understanding photosynthesis is essential for comprehending how energy flows through ecosystems and how life as we know it is maintained.\n\n## The Process of Photosynthesis\n\nPhotosynthesis can be summarized by the equation: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂. However, this simple equation masks a complex series of biochemical reactions that occur in two distinct phases.\n\n### Light-Dependent Reactions\n\nThe first phase occurs in the thylakoid membranes of chloroplasts. Here, chlorophyll and other pigments capture photons of light, initiating a cascade of energy transfers. Water molecules are split through photolysis, releasing electrons, protons, and oxygen gas. The energy from light is used to create a proton gradient across the thylakoid membrane, which drives the synthesis of ATP through chemiosmosis. Additionally, NADP⁺ is reduced to NADPH, creating the energy currency needed for the second phase.\n\n### Light-Independent Reactions (Calvin Cycle)\n\nIn the stroma, the Calvin cycle uses the ATP and NADPH produced in the light reactions to fix atmospheric CO₂ into organic molecules. The enzyme RuBisCO catalyzes the combination of CO₂ with ribulose bisphosphate (RuBP), beginning a cycle that ultimately produces glucose while regenerating RuBP to continue the process.\n\n## Significance and Impact\n\nPhotosynthesis has profound implications for life on Earth. It is responsible for producing the oxygen we breathe and removing carbon dioxide from the atmosphere. The process forms the base of food chains, converting inorganic carbon into organic compounds that serve as food for heterotrophic organisms. Furthermore, photosynthesis plays a crucial role in global climate regulation by acting as a carbon sink.\n\n## Conclusion\n\nPhotosynthesis stands as one of nature's most elegant solutions to energy conversion, supporting the vast majority of life on Earth. As we face challenges related to climate change and food security, understanding and potentially harnessing the principles of photosynthesis becomes increasingly important for developing sustainable technologies and maintaining our planet's delicate ecological balance."
-    }
-  }
-};
+import { useQuestions } from "@/hooks/useQuestions";
+import { useGeneratedContent } from "@/hooks/useGeneratedContent";
+import { useFavorites } from "@/hooks/useFavorites";
+import { exportToPDF } from "@/utils/pdfExport";
+import { shareContent } from "@/utils/webApis";
 
 export default function GeneratedContent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { getQuestionById } = useQuestions();
+  const { getContentForQuestion } = useGeneratedContent();
+  const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
+  
   const [activeTab, setActiveTab] = useState("2M");
+  const [loading, setLoading] = useState(true);
+  const [question, setQuestion] = useState<any>(null);
+  const [contents, setContents] = useState<Record<string, string>>({});
   const [isFavorited, setIsFavorited] = useState(false);
 
-  const handleSaveToLibrary = () => {
-    toast({
-      title: "Saved to library",
-      description: "Content has been added to your study library",
-    });
+  useEffect(() => {
+    loadContent();
+  }, [id]);
+
+  const loadContent = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Load question
+      const questionData = await getQuestionById(id);
+      if (!questionData) {
+        toast({
+          title: "Error",
+          description: "Question not found",
+          variant: "destructive",
+        });
+        navigate('/library');
+        return;
+      }
+      setQuestion(questionData);
+
+      // Load generated content
+      const contentData = await getContentForQuestion(id);
+      const contentMap: Record<string, string> = {};
+      contentData.forEach((item) => {
+        contentMap[item.content_type] = item.content;
+      });
+      setContents(contentMap);
+
+      // Check if favorited
+      const favoriteStatus = isFavorite(id);
+      setIsFavorited(favoriteStatus);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to load content",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: mockContent.question,
-          text: mockContent.formats[activeTab as keyof typeof mockContent.formats].content,
-        });
-      } catch (error) {
-        // User cancelled share
-      }
-    } else {
-      // Fallback - copy to clipboard
-      navigator.clipboard.writeText(mockContent.formats[activeTab as keyof typeof mockContent.formats].content);
+    if (!question) return;
+    
+    const currentContent = contents[activeTab] || '';
+    const success = await shareContent({
+      title: question.original_text,
+      text: `${activeTab} Answer:\n\n${currentContent}`
+    });
+
+    if (success) {
       toast({
-        title: "Copied to clipboard",
-        description: "Content has been copied to your clipboard",
+        title: "Shared",
+        description: "Content shared successfully",
       });
     }
   };
 
   const handleGenerateQuiz = () => {
+    if (!id) return;
+    
     toast({
       title: "Generating quiz...",
       description: "Creating questions based on this content",
@@ -74,20 +99,71 @@ export default function GeneratedContent() {
     navigate(`/quiz/${id}`);
   };
 
-  const handleExportPDF = () => {
-    toast({
-      title: "Exporting PDF...",
-      description: "Your study material is being prepared for download",
-    });
+  const handleExportPDF = async () => {
+    if (!question) return;
+    
+    try {
+      const formattedContent: Array<{ type: string; text: string }> = [];
+      
+      // Add all available content formats
+      Object.entries(contents).forEach(([format, text]) => {
+        formattedContent.push({
+          type: format,
+          text: text
+        });
+      });
+
+      exportToPDF({
+        question: question.original_text,
+        subject: question.subject || undefined,
+        content: formattedContent,
+        createdAt: question.created_at
+      });
+
+      toast({
+        title: "Success",
+        description: "PDF exported successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to export PDF",
+        variant: "destructive",
+      });
+    }
   };
 
-  const toggleFavorite = () => {
-    setIsFavorited(!isFavorited);
-    toast({
-      title: isFavorited ? "Removed from favorites" : "Added to favorites",
-      description: isFavorited ? "Content removed from your favorites" : "Content saved to your favorites",
-    });
+  const toggleFavorite = async () => {
+    if (!id) return;
+    
+    try {
+      if (isFavorited) {
+        await removeFromFavorites(id);
+        setIsFavorited(false);
+      } else {
+        await addToFavorites(id);
+        setIsFavorited(true);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update favorites",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center pb-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!question) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -101,7 +177,7 @@ export default function GeneratedContent() {
               </Button>
               <div>
                 <h1 className="text-lg font-semibold">Generated Content</h1>
-                <Badge variant="secondary">{mockContent.subject}</Badge>
+                {question.subject && <Badge variant="secondary">{question.subject}</Badge>}
               </div>
             </div>
             <Button
@@ -124,7 +200,14 @@ export default function GeneratedContent() {
             <CardTitle>Question</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-foreground font-medium">{mockContent.question}</p>
+            <p className="text-foreground font-medium">{question.original_text}</p>
+            {question.image_url && (
+              <img 
+                src={question.image_url} 
+                alt="Question" 
+                className="mt-4 rounded-lg max-w-full h-auto"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -145,15 +228,26 @@ export default function GeneratedContent() {
                 <TabsTrigger value="essay">Essay</TabsTrigger>
               </TabsList>
               
-              {Object.entries(mockContent.formats).map(([key, format]) => (
-                <TabsContent key={key} value={key} className="mt-4">
+              {(['2M', '5M', '10M', 'essay'] as const).map((format) => (
+                <TabsContent key={format} value={format} className="mt-4">
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">{format.title}</h3>
-                    <div className="prose prose-sm max-w-none">
-                      <div className="whitespace-pre-wrap text-foreground">
-                        {format.content}
+                    <h3 className="text-lg font-semibold">
+                      {format === '2M' && '2-Minute Explanation'}
+                      {format === '5M' && '5-Minute Explanation'}
+                      {format === '10M' && '10-Minute Explanation'}
+                      {format === 'essay' && 'Complete Essay'}
+                    </h3>
+                    {contents[format] ? (
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="whitespace-pre-wrap text-foreground">
+                          {contents[format]}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-8 text-muted-foreground">
+                        <p>Content not available for this format</p>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               ))}
@@ -163,10 +257,6 @@ export default function GeneratedContent() {
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-4">
-          <Button onClick={handleSaveToLibrary} variant="outline">
-            <BookOpen className="mr-2 h-4 w-4" />
-            Save to Library
-          </Button>
           <Button onClick={handleShare} variant="outline">
             <Share2 className="mr-2 h-4 w-4" />
             Share
@@ -175,7 +265,7 @@ export default function GeneratedContent() {
             <Trophy className="mr-2 h-4 w-4" />
             Generate Quiz
           </Button>
-          <Button onClick={handleExportPDF} variant="outline">
+          <Button onClick={handleExportPDF} variant="outline" className="col-span-2">
             <Download className="mr-2 h-4 w-4" />
             Export PDF
           </Button>

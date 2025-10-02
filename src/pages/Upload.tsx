@@ -9,6 +9,10 @@ import { Camera, Upload as UploadIcon, FileText, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import BottomNavigation from "@/components/BottomNavigation";
+import { useAI } from "@/hooks/useAI";
+import { useQuestions } from "@/hooks/useQuestions";
+import { useGeneratedContent } from "@/hooks/useGeneratedContent";
+import { useStorage } from "@/hooks/useStorage";
 
 const subjects = [
   "Mathematics",
@@ -30,6 +34,10 @@ export default function Upload() {
   const [processing, setProcessing] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { extractTextFromImage, generateContent, loading: aiLoading } = useAI();
+  const { createQuestion } = useQuestions();
+  const { createContent } = useGeneratedContent();
+  const { uploadFile } = useStorage();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -82,14 +90,96 @@ export default function Upload() {
 
     setProcessing(true);
     
-    // Simulate AI processing
-    setTimeout(() => {
+    try {
+      let finalQuestionText = question.trim();
+      let imageUrl: string | null = null;
+
+      // Extract text from image if uploaded
+      if (selectedFile) {
+        // Upload image to storage
+        const uploadedUrl = await uploadFile(selectedFile, 'question-images');
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        }
+
+        // Convert image to base64 for OCR
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onloadend = () => {
+            const base64 = reader.result as string;
+            resolve(base64.split(',')[1]);
+          };
+          reader.readAsDataURL(selectedFile);
+        });
+
+        const base64Data = await base64Promise;
+        const extractionResult = await extractTextFromImage({
+          imageData: base64Data,
+          mimeType: selectedFile.type
+        });
+
+        if (extractionResult.success && extractionResult.extractedText) {
+          finalQuestionText = extractionResult.extractedText;
+        }
+      }
+
+      if (!finalQuestionText) {
+        toast({
+          title: "Error",
+          description: "Could not extract text from image. Please enter the question manually.",
+          variant: "destructive",
+        });
+        setProcessing(false);
+        return;
+      }
+
+      // Create question in database
+      const questionRecord = await createQuestion({
+        original_text: finalQuestionText,
+        subject: subject,
+        image_url: imageUrl
+      });
+
+      if (!questionRecord) {
+        throw new Error('Failed to create question');
+      }
+
+      // Generate content for all formats
+      const formats: Array<'2M' | '5M' | '10M' | 'essay'> = ['2M', '5M', '10M', 'essay'];
+      const contentPromises = formats.map(async (format) => {
+        const generated = await generateContent({
+          question: finalQuestionText,
+          contentType: format,
+          subject: subject
+        });
+
+        if (generated) {
+          await createContent({
+            question_id: questionRecord.id,
+            content_type: format,
+            content: generated.content
+          });
+        }
+      });
+
+      await Promise.all(contentPromises);
+
       toast({
         title: "Question processed!",
         description: "Your AI-generated content is ready",
       });
-      navigate("/content/demo-123");
-    }, 2000);
+
+      // Navigate to generated content page
+      navigate(`/content/${questionRecord.id}`);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process question",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -214,11 +304,11 @@ export default function Upload() {
         {/* Submit Button */}
         <Button 
           onClick={handleSubmit} 
-          disabled={processing}
+          disabled={processing || aiLoading}
           className="w-full" 
           size="lg"
         >
-          {processing ? (
+          {(processing || aiLoading) ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Processing...

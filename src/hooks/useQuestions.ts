@@ -167,6 +167,24 @@ export function useQuestions() {
     }
   };
 
+  const getQuestionById = async (id: string) => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      return null;
+    }
+  };
+
   return {
     questions,
     loading,
@@ -174,6 +192,7 @@ export function useQuestions() {
     updateQuestion,
     deleteQuestion,
     searchQuestions,
+    getQuestionById,
     refetch: fetchQuestions,
   };
 }

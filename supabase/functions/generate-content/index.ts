@@ -33,11 +33,11 @@ serve(async (req) => {
 
     // Define prompts for different content types
     const prompts = {
-      '2M': `Provide a clear and concise 2-minute explanation for the following question. Focus on the key concepts and essential information. Make it easily understandable:\n\n${question}`,
-      '5M': `Provide a detailed 5-minute explanation for the following question. Include background context, main concepts, examples, and practical applications:\n\n${question}`,
-      '10M': `Provide a comprehensive 10-minute explanation for the following question. Include thorough background, detailed analysis, multiple examples, comparisons, and real-world applications:\n\n${question}`,
-      'essay': `Write a well-structured essay response to the following question. Include an introduction, body paragraphs with supporting evidence, and a strong conclusion:\n\n${question}`,
-      'notes': `Create structured study notes for the following question. Use bullet points, headings, key terms, and organize the information for easy review:\n\n${question}`
+      '2M': `Provide a clear and concise 2-minute explanation for the following question. Focus on the key concepts and essential information. Make it easily understandable. Include 2-3 relevant reference links at the end.\n\nQuestion: ${question}`,
+      '5M': `Provide a detailed 5-minute explanation for the following question. Include background context, main concepts, examples, and practical applications. Include 3-4 relevant reference links at the end for further reading.\n\nQuestion: ${question}`,
+      '10M': `Provide a comprehensive 10-minute explanation for the following question. Include thorough background, detailed analysis, multiple examples, comparisons, and real-world applications. Include 5-6 relevant reference links at the end covering different aspects of the topic.\n\nQuestion: ${question}`,
+      'essay': `Write a well-structured essay response to the following question. Include an introduction, body paragraphs with supporting evidence and citations, and a strong conclusion. Add a "References" section at the end with 5-7 authoritative sources.\n\nQuestion: ${question}`,
+      'notes': `Create structured study notes for the following question. Use bullet points, headings, key terms, and organize the information for easy review. Include a "Further Reading" section with 3-4 helpful reference links.\n\nQuestion: ${question}`
     };
 
     const prompt = prompts[contentType as keyof typeof prompts];
