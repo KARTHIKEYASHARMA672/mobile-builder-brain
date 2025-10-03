@@ -19,10 +19,10 @@ serve(async (req) => {
 
   try {
     const { question, contentType, subject } = await req.json();
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     if (!question || !contentType) {
@@ -50,41 +50,44 @@ serve(async (req) => {
       ? `Subject: ${subject}\n\n${prompt}` 
       : prompt;
 
-    // Call Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+    // Call Lovable AI Gateway with Gemini
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: contextualPrompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        }
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: 'You are an expert educational AI assistant. Provide clear, accurate, and well-structured answers with relevant reference links.' },
+          { role: 'user', content: contextualPrompt }
+        ]
       })
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Gemini API error:', error);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error('Lovable AI error:', error);
+      
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+      if (response.status === 402) {
+        throw new Error('AI credits exhausted. Please add credits to your workspace.');
+      }
+      
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Gemini response received');
+    console.log('AI response received');
 
-    if (!data.candidates || data.candidates.length === 0) {
-      throw new Error('No content generated from Gemini API');
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error('No content generated from AI');
     }
 
-    const generatedContent = data.candidates[0].content.parts[0].text;
+    const generatedContent = data.choices[0].message.content;
 
     return new Response(JSON.stringify({ 
       content: generatedContent,

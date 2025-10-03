@@ -19,10 +19,10 @@ serve(async (req) => {
 
   try {
     const { imageData, mimeType } = await req.json();
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     if (!imageData) {
@@ -43,49 +43,54 @@ serve(async (req) => {
 
 Please provide the extracted text in a clear, readable format. If you cannot see any text in the image, please say "No readable text found in the image."`;
 
-    // Call Gemini Vision API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+    // Call Lovable AI Gateway with Gemini vision
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              text: prompt
-            },
-            {
-              inline_data: {
-                mime_type: mimeType || 'image/jpeg',
-                data: base64Data
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType || 'image/jpeg'};base64,${base64Data}`
+                }
               }
-            }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          topK: 32,
-          topP: 0.9,
-          maxOutputTokens: 2048,
-        }
+            ]
+          }
+        ]
       })
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Gemini Vision API error:', error);
-      throw new Error(`Gemini Vision API error: ${response.status}`);
+      console.error('Lovable AI error:', error);
+      
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+      if (response.status === 402) {
+        throw new Error('AI credits exhausted. Please add credits to your workspace.');
+      }
+      
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Gemini vision response received');
+    console.log('AI vision response received');
 
-    if (!data.candidates || data.candidates.length === 0) {
+    if (!data.choices || data.choices.length === 0) {
       throw new Error('No text extracted from image');
     }
 
-    const extractedText = data.candidates[0].content.parts[0].text;
+    const extractedText = data.choices[0].message.content;
 
     // Basic confidence scoring based on text quality
     let confidence = 0.8;
