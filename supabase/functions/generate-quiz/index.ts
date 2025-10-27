@@ -1,16 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -19,10 +13,10 @@ serve(async (req) => {
 
   try {
     const { questionText, content, subject, difficulty = 'medium' } = await req.json();
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     if (!questionText && !content) {
@@ -32,7 +26,8 @@ serve(async (req) => {
     console.log('Generating quiz:', { questionText, subject, difficulty });
 
     const sourceContent = content || questionText;
-    const prompt = `Based on the following content, create a multiple-choice quiz with 5-10 questions.
+    const systemPrompt = `You are an expert quiz generator. Create multiple-choice quizzes that test understanding of key concepts.`;
+    const userPrompt = `Based on the following content, create a multiple-choice quiz with 5-10 questions.
 
 Subject: ${subject || 'General'}
 Difficulty Level: ${difficulty}
@@ -63,47 +58,58 @@ Format your response as valid JSON with this structure:
 
 Make sure the JSON is properly formatted and valid.`;
 
-    // Call Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+    // Call Lovable AI Gateway (standardized approach)
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 4096,
-        }
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        response_format: { type: "json_object" }
       })
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        console.error('Rate limit exceeded');
+        return new Response(JSON.stringify({ 
+          error: 'Rate limit exceeded. Please try again later.' 
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        console.error('AI credits exhausted');
+        return new Response(JSON.stringify({ 
+          error: 'AI credits exhausted. Please add credits to your workspace.' 
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const error = await response.text();
-      console.error('Gemini API error:', error);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error('AI Gateway error:', response.status, error);
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Gemini quiz response received');
+    console.log('AI Gateway quiz response received');
 
-    if (!data.candidates || data.candidates.length === 0) {
-      throw new Error('No quiz generated from Gemini API');
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error('No quiz generated from AI Gateway');
     }
 
-    let generatedText = data.candidates[0].content.parts[0].text;
-    
-    // Clean up the response to extract JSON
-    generatedText = generatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const messageContent = data.choices[0].message.content;
     
     try {
-      const quizData = JSON.parse(generatedText);
+      const quizData = JSON.parse(messageContent);
       
       if (!quizData.questions || !Array.isArray(quizData.questions)) {
         throw new Error('Invalid quiz format generated');
@@ -119,7 +125,7 @@ Make sure the JSON is properly formatted and valid.`;
 
     } catch (parseError) {
       console.error('Failed to parse generated quiz JSON:', parseError);
-      console.error('Generated text:', generatedText);
+      console.error('Generated text:', messageContent);
       throw new Error('Failed to parse generated quiz data');
     }
 
