@@ -19,9 +19,12 @@ interface QuizQuestion {
   option_b: string;
   option_c: string;
   option_d: string;
+  order_index: number | null;
+}
+
+interface QuizQuestionWithAnswer extends QuizQuestion {
   correct_answer: 'A' | 'B' | 'C' | 'D';
   explanation: string | null;
-  order_index: number | null;
 }
 
 interface QuizAttempt {
@@ -120,8 +123,9 @@ export function useQuizzes() {
     if (!user) return [];
 
     try {
+      // Use the secure view that doesn't expose correct answers
       const { data, error } = await supabase
-        .from('quiz_questions')
+        .from('quiz_questions_public')
         .select('*')
         .eq('quiz_id', quizId)
         .order('order_index', { ascending: true });
@@ -216,6 +220,26 @@ export function useQuizzes() {
     }
   };
 
+  const validateQuizAnswers = async (quizId: string, answers: Record<string, string>) => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-quiz-answers', {
+        body: { quizId, answers }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to validate quiz answers",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   return {
     quizzes,
     loading,
@@ -224,6 +248,7 @@ export function useQuizzes() {
     createQuizQuestion,
     createQuizAttempt,
     getQuizAttempts,
+    validateQuizAnswers,
     refetch: fetchQuizzes,
   };
 }

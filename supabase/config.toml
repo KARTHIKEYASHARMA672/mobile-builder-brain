@@ -1,1 +1,14 @@
 project_id = "xcmolehaquqldfxqtqst"
+
+# Explicitly require JWT for all edge functions
+[functions.generate-content]
+verify_jwt = true
+
+[functions.generate-quiz]
+verify_jwt = true
+
+[functions.image-to-text]
+verify_jwt = true
+
+[functions.validate-quiz-answers]
+verify_jwt = true
