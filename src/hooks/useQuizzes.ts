@@ -123,12 +123,9 @@ export function useQuizzes() {
     if (!user) return [];
 
     try {
-      // Use the secure view that doesn't expose correct answers
+      // Use the secure function that doesn't expose correct answers
       const { data, error } = await supabase
-        .from('quiz_questions_public')
-        .select('*')
-        .eq('quiz_id', quizId)
-        .order('order_index', { ascending: true });
+        .rpc('get_quiz_questions_public', { p_quiz_id: quizId });
 
       if (error) throw error;
       return data || [];

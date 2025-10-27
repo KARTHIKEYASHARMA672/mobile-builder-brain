@@ -274,29 +274,22 @@ export type Database = {
       }
     }
     Views: {
-      quiz_questions_public: {
-        Row: {
-          id: string | null
-          option_a: string | null
-          option_b: string | null
-          option_c: string | null
-          option_d: string | null
-          order_index: number | null
-          question_text: string | null
-          quiz_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quiz_questions_quiz_id_fkey"
-            columns: ["quiz_id"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      get_quiz_questions_public: {
+        Args: { p_quiz_id: string }
+        Returns: {
+          id: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          order_index: number
+          question_text: string
+          quiz_id: string
+        }[]
+      }
       get_user_stats: {
         Args: { user_uuid: string }
         Returns: {
