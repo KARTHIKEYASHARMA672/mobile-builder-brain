@@ -285,26 +285,6 @@ export type Database = {
           question_text: string | null
           quiz_id: string | null
         }
-        Insert: {
-          id?: string | null
-          option_a?: string | null
-          option_b?: string | null
-          option_c?: string | null
-          option_d?: string | null
-          order_index?: number | null
-          question_text?: string | null
-          quiz_id?: string | null
-        }
-        Update: {
-          id?: string | null
-          option_a?: string | null
-          option_b?: string | null
-          option_c?: string | null
-          option_d?: string | null
-          order_index?: number | null
-          question_text?: string | null
-          quiz_id?: string | null
-        }
         Relationships: [
           {
             foreignKeyName: "quiz_questions_quiz_id_fkey"
